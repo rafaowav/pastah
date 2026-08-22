@@ -66,13 +66,6 @@ npm run db:studio     # Abrir Drizzle Studio
 
 ## Configurações
 
-### Variáveis de Ambiente
-
-```env
-DATABASE_URL="postgresql://user:password@localhost:5432/pastah"
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
-```
-
 ### shadcn/ui
 
 - Style: base-nova
