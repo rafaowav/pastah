@@ -1,4 +1,4 @@
-import { SidebarProvider } from '@/components/layout/sidebar'
+import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
 import { getCurrentUser } from '@/lib/auth/helpers'
 import { redirect } from 'next/navigation'
@@ -14,12 +14,25 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
+  const safeUser = {
+    name: user.name ?? user.email ?? 'Usuário',
+    email: user.email ?? '',
+  }
+
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <Header user={user} />
-        <main className="flex-1 p-6 pt-16">{children}</main>
+    <div className="flex h-screen w-full bg-[#f0f2f5] overflow-hidden">
+      {/* Fixed Left Navigation Rail */}
+      <Sidebar />
+
+      {/* Main Workspace Canvas Container */}
+      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
+        <Header user={safeUser} />
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-[#f8f9fc]">
+          <div className="max-w-[1400px] mx-auto min-h-full">
+            {children}
+          </div>
+        </main>
       </div>
-    </SidebarProvider>
+    </div>
   )
 }

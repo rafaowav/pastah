@@ -1,29 +1,18 @@
-"use client";
+'use client'
 
-import * as React from "react";
-import { DayPicker } from "react-day-picker";
-import "react-day-picker/lib/css/react-day-picker.css";
-import { useState } from "react";
+import * as React from 'react'
+import { Calendar } from './calendar'
+import { useState } from 'react'
 
-/**
- * DatePicker component
- * Rota: /date-picker
- */
 export default function DatePicker() {
-  const [date, setDate] = useState<Date | null>(null);
-
-  const handleChange = (selectedDates: Date[]) => {
-    if (selectedDates[0]) {
-      setDate(selectedDates[0]);
-    }
-  };
+  const [date, setDate] = useState<Date | undefined>(undefined)
 
   return (
     <div className="space-y-2">
-      <DayPicker
-        onSelect={handleChange}
+      <Calendar
         mode="single"
-        className="w-full"
+        selected={date}
+        onSelect={(selectedDate: Date | undefined) => setDate(selectedDate ?? undefined)}
       />
       {date && (
         <p className="text-sm text-muted-foreground">
@@ -31,5 +20,5 @@ export default function DatePicker() {
         </p>
       )}
     </div>
-  );
+  )
 }

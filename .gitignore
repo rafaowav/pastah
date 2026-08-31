@@ -37,11 +37,12 @@ yarn-error.log*
 
 # AI Agent and sensitive data
 AGENTS.md
+.agents/
 .astro
 .env.development.local
 .env.test
 .env.production*
-
+mcp_config.json
 # .next directory is ignored by default
 /.next/
 

@@ -1,25 +1,25 @@
-"use client";
+'use client'
 
-import * as React from "react";
-import DayPicker, { DayPickerProps } from "react-day-picker";
-import "react-day-picker/lib/css/react-day-picker.css";
-import { useState } from "react";
+import * as React from 'react'
+import { DayPicker, type DayPickerProps } from 'react-day-picker'
+import { cn } from '@/lib/utils'
 
-/**
- * Calendar component
- * Rota: /calendar
- */
-export default function Calendar() {
-  const [selected, setSelected] = useState<DayPickerProps["selected"]>();
+export type CalendarProps = DayPickerProps
 
+export function Calendar({
+  className,
+  classNames,
+  showOutsideDays = true,
+  ...props
+}: CalendarProps) {
   return (
-    <div className="space-y-2">
-      <DayPicker
-        selected={selected}
-        onSelect={setSelected}
-        mode="single"
-        className="w-full"
-      />
-    </div>
-  );
+    <DayPicker
+      showOutsideDays={showOutsideDays}
+      className={cn('p-3', className)}
+      {...props}
+    />
+  )
 }
+Calendar.displayName = 'Calendar'
+
+export default Calendar

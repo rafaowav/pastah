@@ -2,12 +2,27 @@ import { auth } from './index'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
 
-export const getCurrentUser = cache(async () => {
+export interface AuthenticatedUser {
+  id: string
+  name: string
+  email: string
+  image?: string | null
+}
+
+export const getCurrentUser = cache(async (): Promise<AuthenticatedUser | null> => {
   const session = await auth()
-  return session?.user ?? null
+  if (!session?.user?.id || !session.user.email) {
+    return null
+  }
+  return {
+    id: session.user.id,
+    name: session.user.name ?? 'User',
+    email: session.user.email,
+    image: session.user.image ?? null,
+  }
 })
 
-export async function requireAuth() {
+export async function requireAuth(): Promise<AuthenticatedUser> {
   const user = await getCurrentUser()
   if (!user) {
     redirect('/login')
