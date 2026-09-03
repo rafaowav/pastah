@@ -1,10 +1,10 @@
 'use server'
 
 import { db } from '@/lib/db'
-import { documents } from '@/lib/db/schema'
+import { documents, companies, clients } from '@/lib/db/schema'
 import { requireAuth } from '@/lib/auth/helpers'
 import { eq, and, isNull } from 'drizzle-orm'
-import { generatePdf } from './generator'
+import { generateDocumentPdf } from './generator'
 
 export async function generateDocumentPdfAction(documentId: string) {
   try {
@@ -22,10 +22,22 @@ export async function generateDocumentPdfAction(documentId: string) {
       return { success: false, error: 'Document not found' }
     }
 
-    const blob = await generatePdf({
+    // Enrich data with full company / client objects for the PDF components
+    const [company, client] = await Promise.all([
+      doc.companyId
+        ? db.query.companies.findFirst({ where: eq(companies.id, doc.companyId) })
+        : null,
+      doc.clientId
+        ? db.query.clients.findFirst({ where: eq(clients.id, doc.clientId) })
+        : null,
+    ])
+
+    const blob = await generateDocumentPdf(doc.type, {
+      ...doc.data,
       title: doc.title,
       type: doc.type,
-      ...doc.data,
+      company: company || undefined,
+      client: client || undefined,
     })
     const arrayBuffer = await blob.arrayBuffer()
     const base64 = Buffer.from(arrayBuffer).toString('base64')
@@ -39,6 +51,6 @@ export async function generateDocumentPdfAction(documentId: string) {
     }
   } catch (error) {
     console.error('Generate PDF error:', error)
-    return { success: false, error: 'Something went wrong' }
+    return { success: false, error: 'Ocorreu um erro' }
   }
 }

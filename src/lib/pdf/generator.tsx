@@ -1,78 +1,48 @@
-import { Document, Page, Text, View, StyleSheet, pdf } from '@react-pdf/renderer'
+import { Document, pdf } from '@react-pdf/renderer'
+import { getDocument } from '@/lib/document-engine/registry'
 
-const styles = StyleSheet.create({
-  page: { padding: 30 },
-  title: { fontSize: 24, marginBottom: 20, textAlign: 'center' },
-  section: { marginBottom: 10 },
-  table: { marginTop: 20 },
-  row: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#EEE', borderBottomStyle: 'solid', paddingVertical: 8 },
-  cell: { flex: 1, fontSize: 10 },
-  total: { fontSize: 14, fontWeight: 'bold', marginTop: 20, textAlign: 'right' },
-})
+export async function generateDocumentPdf(type: string, data: Record<string, any>) {
+  const config = getDocument(type)
 
-export interface PdfData {
-  title?: string
-  type?: string
-  client?: { name?: string; [key: string]: any }
-  company?: { name?: string; [key: string]: any }
-  items?: Array<{
-    description?: string
-    quantity?: number
-    unitPrice?: number
-  }>
-  observations?: string
-  [key: string]: any
-}
+  // Use the type-specific PDF component when available, otherwise fall back to a
+  // safe generic layout so every document type can still be exported.
+  const PdfComponent = config.pdf
 
-export async function generatePdf(data: PdfData) {
-  const items = data.items || []
-  const total = items.reduce((acc, item) => acc + ((item.quantity || 0) * (item.unitPrice || 0)), 0)
+  if (!PdfComponent) {
+    return generateFallbackPdf(type, data)
+  }
 
   const doc = (
     <Document>
-      <Page style={styles.page}>
-        <Text style={styles.title}>{(data.type || '').toUpperCase()}</Text>
-        <Text style={styles.section}>{data.title || ''}</Text>
+      <PdfComponent data={data} />
+    </Document>
+  )
 
+  return pdf(doc).toBlob()
+}
+
+async function generateFallbackPdf(type: string, data: Record<string, any>) {
+  const { Document, Page, Text, View, StyleSheet } = await import('@react-pdf/renderer')
+  const styles = StyleSheet.create({
+    page: { padding: 30, fontSize: 10, color: '#0f172a' },
+    title: { fontSize: 18, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' },
+    section: { marginBottom: 6 },
+    label: { fontWeight: 'bold' },
+  })
+
+  const doc = (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        <Text style={styles.title}>{type.toUpperCase()}</Text>
+        <Text style={styles.section}>{data.title || ''}</Text>
         {data.client?.name && (
           <View style={styles.section}>
-            <Text style={{ fontWeight: 'bold' }}>Client:</Text>
+            <Text style={styles.label}>Cliente: </Text>
             <Text>{data.client.name}</Text>
-          </View>
-        )}
-
-        {data.company?.name && (
-          <View style={styles.section}>
-            <Text style={{ fontWeight: 'bold' }}>Company:</Text>
-            <Text>{data.company.name}</Text>
-          </View>
-        )}
-
-        {items.length > 0 && (
-          <View style={styles.table}>
-            {items.map((item, i) => (
-              <View key={i} style={styles.row}>
-                <Text style={styles.cell}>{item.description || ''}</Text>
-                <Text style={styles.cell}>{item.quantity ?? 0}</Text>
-                <Text style={styles.cell}>R$ {(item.unitPrice ?? 0).toFixed(2)}</Text>
-                <Text style={styles.cell}>R$ {((item.quantity ?? 0) * (item.unitPrice ?? 0)).toFixed(2)}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        <Text style={styles.total}>Total: R$ {total.toFixed(2)}</Text>
-
-        {data.observations && (
-          <View style={{ marginTop: 20 }}>
-            <Text style={{ fontWeight: 'bold' }}>Observations:</Text>
-            <Text>{data.observations}</Text>
           </View>
         )}
       </Page>
     </Document>
   )
-
-  const blob = await pdf(doc).toBlob()
-  return blob
+  return pdf(doc).toBlob()
 }

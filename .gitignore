@@ -1,8 +1,6 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
+# Dependencies
+node_modules/
+.pnp
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -10,58 +8,109 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
+# Next.js
+.next/
+out/
 
-# next.js
-/.next/
-/out/
+# Build output
+dist/
+build/
+coverage/
+.turbo/
 
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
+# Environment variables and secrets
+.env
+.env.*
 .env.local
-.env.*.local
-
-# AI Agent and sensitive data
-AGENTS.md
-.agents/
-.astro
 .env.development.local
+.env.test.local
+.env.production.local
 .env.test
-.env.production*
-mcp_config.json
-# .next directory is ignored by default
-/.next/
+!.env.example
 
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+pnpm-debug.log*
+bun-debug.log*
+debug.log
+*.log
+logs/
 
-# vercel
-.vercel
-
-# typescript
+# TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Testing
+coverage/
+
+# Operating system
+.DS_Store
+Thumbs.db
+
+# IDE/editor local configuration
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.iml
+
+# Local agents, MCP configs and API keys
+.agents/
+.agent/
+.ai/
+.ai-agent/
+.mcp/
+**.mcp_config.json
+**/mcp_config.json
+mcp_config.json
+opencode_agents_config.json
+.openai/
+.cursor/
+.cursorignore
+.claude/
+.claude.json
+.claude-code/
+.gemini/
+.antigravity/
+.stitch/
+AGENTS.md
+CLAUDE.md
+
+# Local database and backups
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.dump
+*.backup
+*.sql.gz
+backups/
+database/
+data/
+
+# Uploads and private storage
+uploads/
+storage/
+private/
+generated/
+exports/
+
+# Temporary files
+tmp/
+temp/
+.cache/
+ts-errors.txt
+ts-output.txt
+ts-output2.txt
+ts-output3.txt
+ts-output4.txt
+ts-output5.txt
+ts-output6.txt
+
+# Vercel
+.vercel
+
+# Setup/init scripts (local paths)
+setup.ps1

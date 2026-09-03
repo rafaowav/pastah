@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "example": {
+      "command": "npx",
+      "args": ["-y", "@example/mcp-server"],
+      "env": {
+        "YOUR_API_KEY": "YOUR_API_KEY",
+        "YOUR_PROJECT_ID": "YOUR_PROJECT_ID"
+      }
+    }
+  }
+}

@@ -28,7 +28,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className={`${manrope.variable} ${hankenGrotesk.variable} font-sans antialiased bg-[#f8f9fc] text-slate-900 min-h-screen`}>
+      <body className={`${manrope.variable} ${hankenGrotesk.variable} font-sans antialiased bg-background text-foreground min-h-screen`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

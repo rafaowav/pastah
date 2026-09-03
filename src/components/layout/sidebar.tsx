@@ -4,6 +4,7 @@ import * as React from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { featuresConfig } from '@/config/features'
 import {
   LayoutDashboard,
   FileText,
@@ -40,7 +41,7 @@ export function useSidebar() {
 }
 
 const navItems = [
-  { title: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { title: 'Visão geral', href: '/dashboard', icon: LayoutDashboard },
   { title: 'Documentos', href: '/documents', icon: FileText },
   { title: 'Templates', href: '/templates', icon: FileStack },
   { title: 'Clientes', href: '/clients', icon: Users },
@@ -52,7 +53,7 @@ export function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-20 bg-white border-r border-slate-200/80 flex flex-col items-center py-6 shrink-0 z-30 transition-all duration-300">
+    <aside className="w-20 bg-sidebar border-r border-sidebar-border flex flex-col items-center py-6 shrink-0 z-30 transition-all duration-300">
       {/* Brand Logo */}
       <Link href="/" className="mb-8 group" title="Pastah Workspace">
         <div className="w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
@@ -89,7 +90,7 @@ export function Sidebar() {
                   'w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150 relative',
                   isActive
                     ? 'bg-slate-900 text-white shadow-sm'
-                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                 )}
               >
                 <Icon className="w-5 h-5" />
@@ -107,7 +108,7 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Bottom Actions: Settings & AI Assistant */}
+      {/* Bottom Actions: Settings */}
       <div className="flex flex-col gap-3 mt-auto w-full items-center pt-4 border-t border-slate-100">
         <Link
           href="/settings"
@@ -119,7 +120,7 @@ export function Sidebar() {
               'w-11 h-11 rounded-xl flex items-center justify-center transition-all',
               pathname === '/settings'
                 ? 'bg-slate-900 text-white'
-                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
             )}
           >
             <Settings className="w-5 h-5" />
@@ -129,16 +130,18 @@ export function Sidebar() {
           </span>
         </Link>
 
-        {/* AI Assistant Indicator */}
-        <button
-          className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-400 text-white flex items-center justify-center shadow-md hover:opacity-95 transition-opacity text-xs font-bold mt-2 group relative"
-          title="Pastah AI Assistant"
-        >
-          <Sparkles className="w-4 h-4" />
-          <span className="absolute left-16 bg-slate-900 text-white text-xs font-semibold px-2.5 py-1 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap shadow-md">
-            Pastah AI
-          </span>
-        </button>
+        {featuresConfig.ai.enabled && (
+          /* AI Assistant Indicator (desabilitado) */
+          <button
+            className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-400 text-white flex items-center justify-center shadow-md hover:opacity-95 transition-opacity text-xs font-bold mt-2 group relative"
+            title="Pastah AI Assistant"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span className="absolute left-16 bg-slate-900 text-white text-xs font-semibold px-2.5 py-1 rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap shadow-md">
+              Pastah AI
+            </span>
+          </button>
+        )}
       </div>
     </aside>
   )

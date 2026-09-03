@@ -1,6 +1,5 @@
 import { auth } from './index'
 import { redirect } from 'next/navigation'
-import { cache } from 'react'
 
 export interface AuthenticatedUser {
   id: string
@@ -9,7 +8,7 @@ export interface AuthenticatedUser {
   image?: string | null
 }
 
-export const getCurrentUser = cache(async (): Promise<AuthenticatedUser | null> => {
+export const getCurrentUser = async (): Promise<AuthenticatedUser | null> => {
   const session = await auth()
   if (!session?.user?.id || !session.user.email) {
     return null
@@ -20,7 +19,7 @@ export const getCurrentUser = cache(async (): Promise<AuthenticatedUser | null> 
     email: session.user.email,
     image: session.user.image ?? null,
   }
-})
+}
 
 export async function requireAuth(): Promise<AuthenticatedUser> {
   const user = await getCurrentUser()

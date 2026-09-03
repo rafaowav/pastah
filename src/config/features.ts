@@ -20,4 +20,7 @@ export const featuresConfig = {
     enabled: true,
     maxPerUser: 100,
   },
-}
+  ai: {
+    enabled: false,
+  },
+} as const

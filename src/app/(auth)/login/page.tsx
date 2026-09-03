@@ -35,7 +35,7 @@ export default function LoginPage() {
         toast.error('E-mail ou senha incorretos.')
       } else {
         toast.success('Bem-vindo de volta!')
-        router.push('/documents')
+        router.push('/dashboard')
         router.refresh()
       }
     } catch (error) {

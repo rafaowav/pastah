@@ -6,6 +6,7 @@ import { companySchema, CompanyInput } from './types'
 import { requireAuth } from '@/lib/auth/helpers'
 import { eq, and, isNull } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { createNotification } from '@/features/notifications/actions'
 
 export type ActionState<T> = 
   | { success: true; data: T }
@@ -29,13 +30,22 @@ export async function createCompanyAction(input: unknown): Promise<ActionState<a
       ...parsed.data,
     }).returning()
 
+    await createNotification(
+      user.id,
+      company.id,
+      'company',
+      'Empresa cadastrada',
+      `A empresa "${company.name}" foi cadastrada com sucesso.`,
+      '/companies',
+    )
+
     revalidatePath('/companies')
     return { success: true, data: company }
   } catch (error) {
     console.error('Create company error:', error)
     return { 
       success: false, 
-      error: 'Something went wrong' 
+      error: 'Ocorreu um erro' 
     }
   }
 }

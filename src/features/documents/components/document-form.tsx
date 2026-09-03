@@ -67,14 +67,14 @@ export function DocumentForm({ mode, type, clients, companies, products, initial
           type="button"
           variant="outline"
           onClick={() => router.push('/documents')}
-          className="rounded-xl h-11 px-6 font-medium text-xs border-slate-300 hover:bg-slate-50"
+          className="rounded-xl h-11 px-6 font-medium text-xs border-border hover:bg-accent"
         >
           Cancelar
         </Button>
         <Button
           type="submit"
           disabled={isLoading}
-          className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-11 px-8 font-semibold text-xs shadow-md gap-2"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-11 px-8 font-semibold text-xs shadow-md gap-2"
         >
           {isLoading ? (
             'Salvando Documento...'

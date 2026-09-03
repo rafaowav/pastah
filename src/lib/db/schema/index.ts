@@ -8,5 +8,6 @@ export { clients } from './clients'
 export { products } from './products'
 export { documents } from './documents'
 export { templates } from './templates'
+export { notifications } from './notifications'
 
 export {}

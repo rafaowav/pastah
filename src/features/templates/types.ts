@@ -8,7 +8,6 @@ export const templateSchema = z.object({
 })
 
 export type TemplateInput = z.infer<typeof templateSchema>
-
 export interface Template {
   id: string
   userId: string

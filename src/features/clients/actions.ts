@@ -6,6 +6,7 @@ import { clientSchema, ClientInput } from './types'
 import { requireAuth } from '@/lib/auth/helpers'
 import { eq, and, isNull } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { createNotification } from '@/features/notifications/actions'
 
 export type ActionState<T> = 
   | { success: true; data: T }
@@ -25,11 +26,20 @@ export async function createClientAction(input: unknown): Promise<ActionState<an
       ...parsed.data,
     }).returning()
 
+    await createNotification(
+      user.id,
+      null,
+      'client',
+      'Cliente criado',
+      `O cliente "${client.name}" foi cadastrado com sucesso.`,
+      '/clients',
+    )
+
     revalidatePath('/clients')
     return { success: true, data: client }
   } catch (error) {
     console.error('Create client error:', error)
-    return { success: false, error: 'Something went wrong' }
+    return { success: false, error: 'Ocorreu um erro' }
   }
 }
 

@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
+import { createNotification } from '@/features/notifications/actions'
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
@@ -35,6 +36,15 @@ export async function registerUserAction(formData: { name: string; email: string
       email: email.toLowerCase(),
       passwordHash,
     }).returning()
+
+    await createNotification(
+      newUser.id,
+      null,
+      'welcome',
+      'Bem-vindo ao Pastah!',
+      'Explore os modelos e crie seu primeiro documento comercial.',
+      '/documents/new',
+    )
 
     return { success: true, data: { id: newUser.id, email: newUser.email } }
   } catch (error) {

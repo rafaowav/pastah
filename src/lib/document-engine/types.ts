@@ -18,6 +18,7 @@ export interface DocumentDefinition {
   schema: z.ZodTypeAny
   fields: ComponentType<DocumentFieldsProps>
   template: ComponentType<{ data: any }>
+  pdf?: ComponentType<{ data: any }>
   actions: {
     canEdit: boolean
     canDelete: boolean
