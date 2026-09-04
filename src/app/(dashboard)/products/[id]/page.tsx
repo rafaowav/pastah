@@ -19,10 +19,13 @@ export default async function EditProductPage({
   
   const product = result.data
   const formData = {
-    ...product,
-    price: product.price ?? undefined,
-    sku: product.sku ?? undefined,
-    category: product.category ?? undefined,
+    id: product.id,
+    name: product.name,
+    description: product.description ?? '',
+    price: product.price ?? '',
+    sku: product.sku ?? '',
+    category: product.category ?? '',
+    settings: product.settings ?? {},
   }
 
   return (

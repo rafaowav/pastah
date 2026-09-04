@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { db } from '@/lib/db'
 import { templates } from '@/lib/db/schema'
@@ -6,89 +6,116 @@ import { templateSchema } from './types'
 import { requireAuth } from '@/lib/auth/helpers'
 import { eq, and, isNull } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { ActionState, zodFieldErrors } from '@/lib/action-result'
+import { devLog, devError, friendlyDbError, extractName } from '@/lib/dev-log'
+import type { Template } from './types'
 
-export type ActionState<T> = 
-  | { success: true; data: T }
-  | { success: false; error: string; errors?: Record<string, string[]> }
+function revalidateTemplatePaths(id?: string) {
+  revalidatePath('/templates')
+  if (id) revalidatePath(`/templates/${id}`)
+}
 
-export async function createTemplateAction(input: unknown): Promise<ActionState<any>> {
+export async function createTemplateAction(input: unknown): Promise<ActionState<Template>> {
   try {
     const user = await requireAuth()
+    devLog('templates.create', 'payload recebido', { name: extractName(input) })
+
     const parsed = templateSchema.safeParse(input)
-    
     if (!parsed.success) {
-      return { success: false, error: 'Validation failed', errors: parsed.error.flatten().fieldErrors }
+      return {
+        success: false,
+        error: 'Verifique os campos destacados.',
+        fieldErrors: zodFieldErrors(parsed.error),
+      }
     }
 
-    const [template] = await db.insert(templates).values({
-      userId: user.id,
-      ...parsed.data,
-      config: parsed.data.config || {},
-      isGlobal: parsed.data.isGlobal || 'false',
-    }).returning()
+    const [template] = await db
+      .insert(templates)
+      .values({
+        userId: user.id,
+        documentType: parsed.data.documentType,
+        name: parsed.data.name,
+        config: parsed.data.config ?? {},
+        isGlobal: parsed.data.isGlobal || 'false',
+      })
+      .returning()
 
-    revalidatePath('/templates')
+    revalidateTemplatePaths(template.id)
     return { success: true, data: template }
   } catch (error) {
-    console.error('Create template error:', error)
-    return { success: false, error: 'Something went wrong' }
+    devError('templates.create', error)
+    return { success: false, error: friendlyDbError(error) }
   }
 }
 
-export async function getTemplatesAction(): Promise<ActionState<any[]>> {
+export async function getTemplatesAction(): Promise<ActionState<Template[]>> {
   try {
     const user = await requireAuth()
-    const userTemplates = await db.query.templates.findMany({
+    const rows = await db.query.templates.findMany({
       where: and(eq(templates.userId, user.id), isNull(templates.deletedAt)),
       orderBy: (templates, { desc }) => [desc(templates.createdAt)],
     })
-    return { success: true, data: userTemplates }
+    return { success: true, data: rows }
   } catch (error) {
-    console.error('Get templates error:', error)
-    return { success: false, error: 'Something went wrong' }
+    devError('templates.list', error)
+    return { success: false, error: friendlyDbError(error) }
   }
 }
 
-export async function getTemplateByIdAction(id: string): Promise<ActionState<any>> {
+export async function getTemplateByIdAction(id: string): Promise<ActionState<Template>> {
   try {
     const user = await requireAuth()
     const template = await db.query.templates.findFirst({
       where: and(eq(templates.id, id), eq(templates.userId, user.id), isNull(templates.deletedAt)),
     })
-    if (!template) return { success: false, error: 'Template not found' }
+    if (!template) return { success: false, error: 'Template não encontrado.' }
     return { success: true, data: template }
   } catch (error) {
-    console.error('Get template error:', error)
-    return { success: false, error: 'Something went wrong' }
+    devError('templates.get', error)
+    return { success: false, error: friendlyDbError(error) }
   }
 }
 
-export async function updateTemplateAction(id: string, input: unknown): Promise<ActionState<any>> {
+export async function updateTemplateAction(id: string, input: unknown): Promise<ActionState<Template>> {
   try {
     const user = await requireAuth()
+    devLog('templates.update', 'payload recebido', { id, name: extractName(input) })
+
+    if (!id || !/^[0-9a-fA-F-]{36}$/.test(id)) {
+      return { success: false, error: 'Identificador de template inválido.' }
+    }
+
     const parsed = templateSchema.safeParse(input)
-    
     if (!parsed.success) {
-      return { success: false, error: 'Validation failed', errors: parsed.error.flatten().fieldErrors }
+      return {
+        success: false,
+        error: 'Verifique os campos destacados.',
+        fieldErrors: zodFieldErrors(parsed.error),
+      }
     }
 
     const existing = await db.query.templates.findFirst({
       where: and(eq(templates.id, id), eq(templates.userId, user.id), isNull(templates.deletedAt)),
     })
+    if (!existing) return { success: false, error: 'Template não encontrado.' }
 
-    if (!existing) return { success: false, error: 'Template not found' }
-
-    const [updated] = await db.update(templates)
-      .set({ ...parsed.data, updatedAt: new Date() })
+    const [updated] = await db
+      .update(templates)
+      .set({
+        documentType: parsed.data.documentType,
+        name: parsed.data.name,
+        config: parsed.data.config ?? {},
+        isGlobal: parsed.data.isGlobal || 'false',
+        updatedAt: new Date(),
+      })
       .where(and(eq(templates.id, id), eq(templates.userId, user.id)))
       .returning()
 
-    revalidatePath('/templates')
-    revalidatePath(`/templates/${id}`)
+    revalidateTemplatePaths(id)
     return { success: true, data: updated }
   } catch (error) {
-    console.error('Update template error:', error)
-    return { success: false, error: 'Something went wrong' }
+    devError('templates.update', error)
+    return { success: false, error: friendlyDbError(error) }
   }
 }
 
@@ -98,17 +125,17 @@ export async function deleteTemplateAction(id: string): Promise<ActionState<void
     const existing = await db.query.templates.findFirst({
       where: and(eq(templates.id, id), eq(templates.userId, user.id), isNull(templates.deletedAt)),
     })
+    if (!existing) return { success: false, error: 'Template não encontrado.' }
 
-    if (!existing) return { success: false, error: 'Template not found' }
-
-    await db.update(templates)
+    await db
+      .update(templates)
       .set({ deletedAt: new Date(), updatedAt: new Date() })
       .where(and(eq(templates.id, id), eq(templates.userId, user.id)))
 
-    revalidatePath('/templates')
+    revalidateTemplatePaths()
     return { success: true, data: undefined }
   } catch (error) {
-    console.error('Delete template error:', error)
-    return { success: false, error: 'Something went wrong' }
+    devError('templates.delete', error)
+    return { success: false, error: friendlyDbError(error) }
   }
 }

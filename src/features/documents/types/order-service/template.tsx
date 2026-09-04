@@ -1,13 +1,13 @@
+import {
+  DocumentHeader,
+  DocumentClientInfo,
+  DocumentFooter,
+  formatDocBRL,
+} from '@/features/documents/components/document-header'
+import type { DocCompany, DocClient } from '@/features/documents/components/document-header'
+
 interface OrderServiceTemplateProps {
   data: any
-}
-
-const statusMap: Record<string, string> = {
-  'Aberta': 'bg-green-100 text-green-800',
-  'Em Análise': 'bg-yellow-100 text-yellow-800',
-  'Aguardando Peças': 'bg-blue-100 text-blue-800',
-  'Concluída': 'bg-purple-100 text-purple-800',
-  'Entregue': 'bg-emerald-100 text-emerald-800',
 }
 
 export function OrderServiceTemplate({ data }: OrderServiceTemplateProps) {
@@ -27,125 +27,169 @@ export function OrderServiceTemplate({ data }: OrderServiceTemplateProps) {
   const overallTotal = partsTotal + servicesTotal
   const statusKey = data?.status || 'Aberta'
 
+  const company: DocCompany | null = data?.company ?? null
+  const client: DocClient | null = data?.client ?? null
+
   return (
-    <>
-      <div className="p-8 space-y-6">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold">ORDEM DE SERVIÇO</h1>
-          <p className="text-slate-500">#{data?.osNumber || ''}</p>
-        </div>
+    <div className="bg-white text-slate-900">
+      <DocumentHeader
+        company={company}
+        info={{
+          title: 'Ordem de Serviço',
+          number: data?.osNumber || '',
+          issuedAt: data?.entryDate || new Date(),
+          validUntil: data?.expectedDate,
+          status: statusKey,
+        }}
+      />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
-          <div>
-            <h3 className="font-semibold text-slate-500">Cliente</h3>
-            <p className="font-bold">{data?.client?.name || data?.clientName || 'Nome do Cliente'}</p>
-            <p className="text-slate-500">{data?.client?.phone || data?.client?.email || ''}</p>
-          </div>
-          <div>
-            <h3 className="font-semibold text-slate-500">Técnico</h3>
-            <p>{data?.technician || 'Não designado'}</p>
-          </div>
-        </div>
+      <DocumentClientInfo client={client} fallbackName={data?.clientName} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <div>
-            <h3 className="font-semibold text-slate-500">Equipamento</h3>
-            <p>{data?.equipment?.name || ''}</p>
-            <p className="text-slate-500">
-              {data?.equipment?.brand || ''} {data?.equipment?.model || ''}
-              {data?.equipment?.serialNumber ? `Nº Série: ${data.equipment.serialNumber}` : ''}
-            </p>
+      {/* Técnico e Equipamento */}
+      <div className="mx-10 mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="rounded-xl bg-slate-50 p-4">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+            Técnico Responsável
           </div>
-          <div>
-            <h3 className="font-semibold text-slate-500">Status</h3>
-            <span className={`px-3 py-1 rounded text-xs font-medium ${statusMap[statusKey] || 'text-slate-500'}`}>
-              {statusKey}
-            </span>
-          </div>
+          <p className="text-sm font-medium text-slate-800">{data?.technician || 'Não designado'}</p>
         </div>
+        <div className="rounded-xl bg-slate-50 p-4">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+            Equipamento
+          </div>
+          <p className="text-sm font-medium text-slate-800">{data?.equipment?.name || '—'}</p>
+          <p className="text-xs text-slate-500">
+            {[data?.equipment?.brand, data?.equipment?.model].filter(Boolean).join(' • ')}
+            {data?.equipment?.serialNumber ? ` • Nº Série: ${data.equipment.serialNumber}` : ''}
+          </p>
+        </div>
+      </div>
 
-        <div className="bg-white rounded-3xl p-6">
-          <h3 className="font-heading font-bold text-lg text-slate-900 border-b border-slate-100 pb-3">
+      {/* Defeito e diagnóstico */}
+      <div className="mx-10 mt-8 space-y-6">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
             Defeito Reportado
-          </h3>
-          <p className="text-slate-600 line-clamp-4">{data?.reportedProblem || ''}</p>
+          </div>
+          <p className="text-sm text-slate-600 whitespace-pre-wrap">{data?.reportedProblem || '—'}</p>
         </div>
-
-        <div className="bg-white rounded-3xl p-6">
-          <h3 className="font-heading font-bold text-lg text-slate-900 border-b border-slate-100 pb-3">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
             Diagnóstico Técnico
-          </h3>
-          <p className="text-slate-600 line-clamp-4">{data?.technicalDiagnosis || 'Aguardando análise'}</p>
+          </div>
+          <p className="text-sm text-slate-600 whitespace-pre-wrap">
+            {data?.technicalDiagnosis || 'Aguardando análise'}
+          </p>
         </div>
+      </div>
 
-        <div className="bg-white rounded-3xl p-6">
-          <h3 className="font-heading font-bold text-lg text-slate-900 border-b border-slate-100 pb-3">
+      {/* Peças — tabela técnica com cabeçalho escuro */}
+      {parts.length > 0 && (
+        <div className="mx-10 mt-8">
+          <h3 className="font-heading font-bold text-lg text-slate-900 border-b border-slate-100 pb-3 mb-4">
             Peças e Materiais Utilizados
           </h3>
-          {parts.length > 0 ? (
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2">Peça/Material</th>
-                  <th className="text-right py-2">Qtd</th>
-                  <th className="text-right py-2">Valor Unit.</th>
-                  <th className="text-right py-2">Subtotal</th>
-                </tr>
-              </thead>
-              <tbody>
-                {parts.map((item: any, i: number) => (
-                  <tr key={i} className="border-b">
-                    <td className="py-2">{item.partName}</td>
-                    <td className="text-right">{item.quantity}</td>
-                    <td className="text-right">R$ {Number(item.unitPrice || 0).toFixed(2)}</td>
-                    <td className="text-right">R$ {(item.total || item.quantity * item.unitPrice || 0).toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={4} className="text-right font-bold py-4">
-                    Total Peças: R$ {partsTotal.toFixed(2)}
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr style={{ backgroundColor: '#0f172a' }} className="text-white text-[10px] uppercase tracking-wider">
+                <th className="text-left py-2.5 px-3 font-semibold rounded-l-lg">Peça/Material</th>
+                <th className="text-right py-2.5 px-3 font-semibold">Qtd</th>
+                <th className="text-right py-2.5 px-3 font-semibold">Valor Unit.</th>
+                <th className="text-right py-2.5 px-3 font-semibold rounded-r-lg">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {parts.map((item: any, i: number) => (
+                <tr key={i} className="border-b border-slate-100">
+                  <td className="py-2.5 px-3 text-slate-800">{item.partName || '—'}</td>
+                  <td className="py-2.5 px-3 text-right text-slate-600">{item.quantity ?? 0}</td>
+                  <td className="py-2.5 px-3 text-right text-slate-600">{formatDocBRL(Number(item.unitPrice || 0))}</td>
+                  <td className="py-2.5 px-3 text-right font-semibold text-slate-900">
+                    {formatDocBRL(Number(item.total || item.quantity * item.unitPrice || 0))}
                   </td>
                 </tr>
-              </tfoot>
-            </table>
-          ) : (
-            <p className="text-slate-500 text-center py-8">Nenhuma peça adicionada</p>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <div>
-            <h3 className="font-semibold text-slate-500">Mão de Obra</h3>
-            {services.length > 0 ? (
-              services.map((s: any, i: number) => (
-                <p key={i} className="text-sm text-slate-600">
-                  {s.description}: {s.hours}h x R$ {Number(s.laborRate || 0).toFixed(2)}
-                </p>
-              ))
-            ) : (
-              <p className="text-slate-500">Nenhum serviço adicionado</p>
-            )}
-            <p className="font-bold text-right">Total: R$ {servicesTotal.toFixed(2)}</p>
+              ))}
+            </tbody>
+          </table>
+          <div className="flex justify-end mt-3">
+            <div className="w-64 flex justify-between text-sm">
+              <span className="text-slate-600">Total Peças</span>
+              <span className="font-semibold text-slate-900">{formatDocBRL(partsTotal)}</span>
+            </div>
           </div>
-          <div>
-            <h3 className="font-semibold text-slate-500">Total Geral</h3>
-            <p className="font-bold text-2xl text-right">R$ {overallTotal.toFixed(2)}</p>
+        </div>
+      )}
+
+      {/* Mão de obra */}
+      {services.length > 0 && (
+        <div className="mx-10 mt-8">
+          <h3 className="font-heading font-bold text-lg text-slate-900 border-b border-slate-100 pb-3 mb-4">
+            Mão de Obra
+          </h3>
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr style={{ backgroundColor: '#0f172a' }} className="text-white text-[10px] uppercase tracking-wider">
+                <th className="text-left py-2.5 px-3 font-semibold rounded-l-lg">Serviço</th>
+                <th className="text-right py-2.5 px-3 font-semibold">Horas</th>
+                <th className="text-right py-2.5 px-3 font-semibold">R$/h</th>
+                <th className="text-right py-2.5 px-3 font-semibold rounded-r-lg">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {services.map((item: any, i: number) => (
+                <tr key={i} className="border-b border-slate-100">
+                  <td className="py-2.5 px-3 text-slate-800">{item.description || '—'}</td>
+                  <td className="py-2.5 px-3 text-right text-slate-600">{item.hours ?? 0}</td>
+                  <td className="py-2.5 px-3 text-right text-slate-600">{formatDocBRL(Number(item.laborRate || 0))}</td>
+                  <td className="py-2.5 px-3 text-right font-semibold text-slate-900">
+                    {formatDocBRL(Number(item.total || item.hours * item.laborRate || 0))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="flex justify-end mt-3">
+            <div className="w-64 flex justify-between text-sm">
+              <span className="text-slate-600">Total Mão de Obra</span>
+              <span className="font-semibold text-slate-900">{formatDocBRL(servicesTotal)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Total geral */}
+      <div className="mx-10 mt-8 flex justify-end">
+        <div className="w-72">
+          <div className="flex justify-between items-center border-t-2 border-slate-900 pt-3">
+            <span className="font-bold uppercase text-xs">Total Geral (R$)</span>
+            <span className="font-heading text-xl font-bold">{formatDocBRL(overallTotal)}</span>
           </div>
         </div>
       </div>
 
-      <div className="pt-8 border-t border-slate-200/80">
-        <h3 className="font-semibold text-slate-700">Termo de Retirada e Garantia</h3>
-        <p className="text-slate-500">
+      {/* Garantia */}
+      <div className="mx-10 mt-8">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+          Termo de Retirada e Garantia
+        </div>
+        <p className="text-sm text-slate-600">
           O cliente declara ter recebido o equipamento/serviço em perfeito estado. A garantia cobre{' '}
           {data?.warrantyTerms || '30 dias'} a contar da data de conclusão.
         </p>
-        <p className="text-slate-400 mt-4">
-          _______________________________ cliente _______________________________ técnico
-        </p>
       </div>
-    </>
+
+      <DocumentFooter
+        company={company}
+        info={{
+          title: 'Ordem de Serviço',
+          number: data?.osNumber || '',
+          issuedAt: data?.entryDate || new Date(),
+        }}
+        signatures={[
+          { label: 'Cliente', name: client?.name || data?.clientName || '' },
+          { label: 'Técnico Responsável', name: data?.technician || '' },
+        ]}
+      />
+    </div>
   )
 }

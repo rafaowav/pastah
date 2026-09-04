@@ -71,18 +71,21 @@ export function TemplateForm({ mode, initialData }: TemplateFormProps) {
         router.push('/templates')
         router.refresh()
       } else {
-        if (result.errors) {
-          Object.entries(result.errors).forEach(([field, messages]) => {
+        if (result.fieldErrors) {
+          Object.entries(result.fieldErrors).forEach(([field, messages]) => {
             messages.forEach((message) => {
               toast.error(`${field}: ${message}`)
             })
           })
         } else {
-          toast.error(result.error as string)
+          toast.error(result.error)
         }
       }
     } catch (error) {
-      toast.error('Erro ao salvar template.')
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[template-form] erro inesperado:', error)
+      }
+      toast.error('Não foi possível salvar o template. Tente novamente.')
     } finally {
       setIsLoading(false)
     }

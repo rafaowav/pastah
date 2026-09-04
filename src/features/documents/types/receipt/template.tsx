@@ -1,3 +1,11 @@
+import {
+  DocumentHeader,
+  DocumentFooter,
+  formatDocDate,
+} from '@/features/documents/components/document-header'
+import type { DocCompany, DocClient } from '@/features/documents/components/document-header'
+import { documentColors } from '@/lib/document-engine/document-theme'
+
 interface ReceiptTemplateProps {
   data: any
 }
@@ -5,80 +13,117 @@ interface ReceiptTemplateProps {
 export function ReceiptTemplate({ data }: ReceiptTemplateProps) {
   const valor = Number(data?.amount ?? 0)
   const valorExtenso = data?.amountInWords || ''
-  const dataFormatada = data?.paymentDate
-    ? new Date(data.paymentDate).toLocaleDateString('pt-BR')
-    : ''
+  const dataFormatada = data?.paymentDate ? formatDocDate(data.paymentDate) : ''
   const cidade = data?.city || data?.cityDate || ''
 
+  const emissor = data?.emissorNome || data?.companyName || data?.company?.name || 'Sua Empresa'
+  const emissorDoc = data?.emissorCNPJ || data?.companyDocument || data?.company?.document || ''
+  const pagador = data?.pagadorNome || data?.clientName || data?.client?.name || 'Nome do Cliente'
+  const pagadorDoc = data?.pagadorCPF || data?.clientDocument || data?.client?.document || ''
+
+  const company: DocCompany | null = data?.company ?? null
+  const client: DocClient | null = data?.client ?? null
+
+  const headerInfo = {
+    title: 'Recibo de Pagamento',
+    number: data?.receiptNumber || 'RECIBO',
+    issuedAt: data?.paymentDate || new Date(),
+    extraLines: data?.paymentMethod ? [data.paymentMethod] : [],
+  }
+
   return (
-    <div className="p-8 space-y-6 border-t border-b border-slate-200/80">
-      <div className="text-center mb-8">
-        <div className="inline-block rounded-full bg-slate-900 text-white px-6 py-3 text-sm font-bold">
-          {data?.receiptNumber || 'RECIBO'}
+    <div className="bg-white text-slate-900">
+      <DocumentHeader company={company} info={headerInfo} />
+
+      {/* Valor recebido em destaque (box claro, corpo branco) */}
+      <div className="mx-10 mt-8 rounded-2xl bg-slate-50 border border-slate-200 p-8 text-center">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+          Valor Recebido
         </div>
-        <p className="text-slate-500 mt-2">COMPROVANTE DE PAGAMENTO</p>
+        <div className="font-heading font-bold text-5xl" style={{ color: documentColors.headerBg }}>
+          {valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+        </div>
+        {valorExtenso && <p className="text-slate-500 mt-2 text-sm">({valorExtenso})</p>}
       </div>
 
-      <div className="text-center mb-8">
-        <div className="font-bold text-5xl text-slate-900">
-          R$ {valor.toFixed(2).replace('.', ',')}
-        </div>
-        {valorExtenso && (
-          <p className="text-slate-500">({valorExtenso})</p>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
-        <div>
-          <h4 className="font-semibold text-slate-600 mb-3">Emissor</h4>
-          <p className="text-slate-700">{data?.emissorNome || data?.companyName || data?.company?.name || 'Sua Empresa'}</p>
-          <p className="text-slate-500">{data?.emissorCNPJ || data?.companyDocument || data?.company?.document || ''}</p>
-        </div>
-        <div>
-          <h4 className="font-semibold text-slate-600 mb-3">Pagador</h4>
-          <p className="text-slate-700">{data?.pagadorNome || data?.clientName || data?.client?.name || 'Nome do Cliente'}</p>
-          <p className="text-slate-500">{data?.pagadorCPF || data?.clientDocument || data?.client?.document || ''}</p>
-        </div>
-      </div>
-
-      <div className="border-t border-b border-slate-200/80 py-6 mb-6">
-        <h4 className="font-semibold text-slate-600 mb-2">Referente a:</h4>
-        <p className="text-slate-500 italic">{data?.reference || 'Pagamento não especificado'}</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        {['PIX', 'Transferência Bancária', 'Dinheiro', 'Cartão de Crédito'].map((m) => (
-          <div
-            key={m}
-            className={`p-3 rounded bg-slate-50/50 text-sm ${
-              data?.paymentMethod === m ? 'bg-slate-900 text-white' : 'text-slate-400'
-            }`}
-          >
-            {m}
+      {/* Emissor e Pagador */}
+      <div className="mx-10 mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="rounded-xl border border-slate-200 p-5">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+            Emissor
           </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <p className="text-slate-500">Data do Pagamento</p>
-          <p className="font-bold">{dataFormatada || 'Não informada'}</p>
+          <p className="font-semibold text-slate-900">{emissor}</p>
+          {emissorDoc && <p className="text-xs text-slate-500 mt-0.5">{emissorDoc}</p>}
         </div>
-        <div>
-          <p className="text-slate-500">Local</p>
-          <p className="font-bold">{cidade || 'Não informado'}</p>
+        <div className="rounded-xl border border-slate-200 p-5">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+            Pagador
+          </div>
+          <p className="font-semibold text-slate-900">{pagador}</p>
+          {pagadorDoc && <p className="text-xs text-slate-500 mt-0.5">{pagadorDoc}</p>}
         </div>
       </div>
 
-      <div className="mt-8 text-slate-500 text-sm">
-        <p>Recebemos de {data?.pagadorNome || data?.clientName || data?.client?.name || 'o pagador'} a quantia de R$ {valor.toFixed(2).replace('.', ',')} referente a: {data?.reference || 'pagamento'}.</p>
-        <p>Termo lavrado em via dupla para maior legitimidade jurídica.</p>
+      {/* Referente a */}
+      <div className="mx-10 mt-8">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+          Referente a
+        </div>
+        <p className="text-sm text-slate-600 italic border-l-2 border-slate-200 pl-4">
+          {data?.reference || 'Pagamento não especificado'}
+        </p>
       </div>
 
-      <div className="mt-8">
-        <p className="text-slate-500">Local e Data: {cidade ? `${cidade}, ` : ''}{dataFormatada || '__/__/____'}</p>
-        <p className="text-slate-500">Assinatura do Pagador: _________________________________________________</p>
+      {/* Detalhes */}
+      <div className="mx-10 mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="rounded-xl bg-slate-50 p-4">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+            Forma de Pagamento
+          </div>
+          <p className="text-sm font-medium text-slate-800">{data?.paymentMethod || 'Não informada'}</p>
+        </div>
+        <div className="rounded-xl bg-slate-50 p-4">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+            Data do Pagamento
+          </div>
+          <p className="text-sm font-medium text-slate-800">{dataFormatada || 'Não informada'}</p>
+        </div>
+        <div className="rounded-xl bg-slate-50 p-4">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+            Local
+          </div>
+          <p className="text-sm font-medium text-slate-800">{cidade || 'Não informado'}</p>
+        </div>
       </div>
+
+      {/* Declaração legal */}
+      <div className="mx-10 mt-8 text-sm text-slate-600 space-y-2">
+        <p>
+          Recebemos de <span className="font-semibold text-slate-800">{pagador}</span> a quantia de{' '}
+          <span className="font-semibold text-slate-800">
+            {valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+          </span>{' '}
+          referente a: {data?.reference || 'pagamento'}.
+        </p>
+        <p className="text-xs text-slate-400">
+          Termo lavrado em via dupla para maior legitimidade jurídica.
+        </p>
+      </div>
+
+      <DocumentFooter
+        company={company}
+        info={headerInfo}
+        signatures={[
+          {
+            label: 'Assinatura do Emitidor',
+            name: emissor,
+          },
+          {
+            label: 'Local e Data',
+            name: cidade ? `${cidade}, ${dataFormatada || '__/__/____'}` : dataFormatada || '__/__/____',
+          },
+        ]}
+      />
     </div>
   )
 }

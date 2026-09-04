@@ -1,140 +1,127 @@
-import { Page, Text, View, StyleSheet } from '@react-pdf/renderer'
-
-const styles = StyleSheet.create({
-  page: { fontFamily: 'Helvetica', padding: 40, fontSize: 9, color: '#0f172a' },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#0f172a',
-    marginTop: -40, marginLeft: -40, marginRight: -40, paddingHorizontal: 40, paddingVertical: 30,
-  },
-  companyBlock: { flexDirection: 'column', gap: 2 },
-  companyTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  companyLogo: { width: 24, height: 24, borderRadius: 8, backgroundColor: '#3b82f6', color: '#ffffff', fontSize: 12, fontWeight: 'bold', textAlign: 'center', lineHeight: 24 },
-  companyName: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
-  companyMeta: { color: '#cbd5e1', fontSize: 8 },
-  docTitle: { color: '#ffffff', fontSize: 18, fontWeight: 'bold', textAlign: 'right', textTransform: 'uppercase' },
-  docMeta: { color: '#cbd5e1', fontSize: 8, textAlign: 'right' },
-  clientCard: { marginTop: 24, border: '1px solid #e2e8f0', borderRadius: 10, padding: 16 },
-  clientLabel: { fontSize: 7, fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', marginBottom: 4, letterSpacing: 1 },
-  clientName: { fontSize: 12, fontWeight: 'bold', color: '#0f172a', marginBottom: 4 },
-  clientMeta: { color: '#64748b', fontSize: 8 },
-  sectionTitle: { fontSize: 10, fontWeight: 'bold', color: '#0f172a', marginTop: 20, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
-  sectionText: { fontSize: 9, color: '#475569', marginBottom: 4, lineHeight: 1.4 },
-  scopeItem: { fontSize: 9, color: '#475569', marginBottom: 6, marginLeft: 12 },
-  scopeTitle: { fontWeight: 'bold' },
-  investmentRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, borderBottom: '1px solid #f1f5f9' },
-  investmentLabel: { fontSize: 9, color: '#475569' },
-  investmentValue: { fontSize: 9, fontWeight: 'bold', color: '#0f172a' },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', borderTop: '2px solid #0f172a', marginTop: 8, paddingTop: 8 },
-  totalLabel: { fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase' },
-  totalValue: { fontSize: 16, fontWeight: 'bold', color: '#0f172a' },
-  footer: { marginTop: 40, borderTop: '1px solid #e2e8f0', paddingTop: 24, alignItems: 'center' },
-  footerHint: { fontSize: 8, color: '#64748b', marginBottom: 24 },
-  signatureLine: { width: 240, borderTop: '1px solid #94a3b8', paddingTop: 4 },
-  signatureName: { fontSize: 8, fontWeight: 'bold', color: '#334155' },
-})
-
-function formatBRL(value: number): string {
-  return (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
+import { View, Text } from '@react-pdf/renderer'
+import {
+  DocumentPdfPage,
+  DocumentPdfHeader,
+  DocumentPdfClient,
+  DocumentPdfFooter,
+  docPdfStyles,
+  pdfBRL,
+  pdfDate,
+  documentColors,
+  documentSpacing,
+} from '@/features/documents/components/document-pdf-shared'
 
 export function PropostaPdf({ data }: { data: any }) {
-  const totalInvestment = data.investment?.reduce((acc: number, item: any) => acc + Number(item.amount || 0), 0) || 0
+  const totalInvestment =
+    data.investment?.reduce((acc: number, item: any) => acc + Number(item.amount || 0), 0) || 0
+
+  const headerInfo = {
+    title: 'Proposta Comercial',
+    number: data?.proposalNumber || undefined,
+    issuedAt: new Date(),
+    validUntil: data?.validUntil,
+    extraLines: data?.title ? [data.title] : [],
+  }
 
   return (
-    <Page size="A4" style={styles.page}>
-      <View style={styles.header}>
-        <View style={styles.companyBlock}>
-          <View style={styles.companyTitleRow}>
-            <Text style={styles.companyLogo}>{(data?.company?.name?.[0] || 'P').toUpperCase()}</Text>
-            <Text style={styles.companyName}>{data?.company?.name || 'Sua Empresa'}</Text>
-          </View>
-          {data?.company?.document && <Text style={styles.companyMeta}>CNPJ: {data.company.document}</Text>}
-          {data?.company?.email && <Text style={styles.companyMeta}>{data.company.email}</Text>}
-          {data?.company?.phone && <Text style={styles.companyMeta}>{data.company.phone}</Text>}
-        </View>
-        <View>
-          <Text style={styles.docTitle}>Proposta Comercial</Text>
-          <Text style={styles.docMeta}>{data?.title || ''}</Text>
-          <Text style={styles.docMeta}>Emissão: {new Date().toLocaleDateString('pt-BR')}</Text>
-          <Text style={styles.docMeta}>Validade: {data?.validUntil ? new Date(data.validUntil).toLocaleDateString('pt-BR') : '30 dias'}</Text>
-        </View>
-      </View>
+    <DocumentPdfPage>
+      <DocumentPdfHeader company={data?.company} info={headerInfo} />
 
-      <View style={styles.clientCard}>
-        <Text style={styles.clientLabel}>Cliente</Text>
-        <Text style={styles.clientName}>{data?.client?.name || data?.clientName || 'Nome do Cliente'}</Text>
-        <Text style={[styles.clientMeta]}>
-          {data?.client?.document ? `CPF/CNPJ: ${data.client.document}` : ''}
-          {data?.client?.email ? ` • ${data.client.email}` : ''}
-        </Text>
-      </View>
+      <DocumentPdfClient client={data?.client} fallbackName={data?.clientName} />
 
       {data?.introduction && (
-        <>
-          <Text style={styles.sectionTitle}>Apresentação</Text>
-          <Text style={styles.sectionText}>{data.introduction}</Text>
-        </>
+        <View style={{ marginTop: documentSpacing.sectionGap }}>
+          <Text style={docPdfStyles.sectionTitle}>Apresentação</Text>
+          <Text style={docPdfStyles.sectionText}>{data.introduction}</Text>
+        </View>
       )}
+
       {data?.objectives && (
-        <>
-          <Text style={styles.sectionTitle}>Objetivos</Text>
-          <Text style={styles.sectionText}>{data.objectives}</Text>
-        </>
+        <View>
+          <Text style={docPdfStyles.sectionTitle}>Objetivos</Text>
+          <Text style={docPdfStyles.sectionText}>{data.objectives}</Text>
+        </View>
       )}
 
       {data?.scope && data.scope.length > 0 && (
-        <>
-          <Text style={styles.sectionTitle}>Escopo Detalhado</Text>
+        <View>
+          <Text style={docPdfStyles.sectionTitle}>Escopo Detalhado</Text>
           {data.scope.map((s: any, i: number) => (
-            <View key={i} style={styles.scopeItem}>
-              <Text style={styles.scopeTitle}>{i + 1}. {s.title}</Text>
-              <Text>{s.description}</Text>
-              {s.deliverables && <Text>Entregáveis: {s.deliverables}</Text>}
+            <View key={i} style={{ marginBottom: 8, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: documentColors.border }} wrap={false}>
+              <Text style={[docPdfStyles.sectionText, { fontWeight: 'bold', color: documentColors.textStrong }]}>
+                {i + 1}. {s.title}
+              </Text>
+              <Text style={docPdfStyles.sectionText}>{s.description}</Text>
+              {s.deliverables && (
+                <Text style={[docPdfStyles.sectionText, { color: documentColors.textMuted, fontSize: 8 }]}>
+                  Entregáveis: {s.deliverables}
+                </Text>
+              )}
             </View>
           ))}
-        </>
+        </View>
       )}
 
       {data?.timeline && data.timeline.length > 0 && (
-        <>
-          <Text style={styles.sectionTitle}>Cronograma</Text>
+        <View>
+          <Text style={docPdfStyles.sectionTitle}>Cronograma Estimado</Text>
+          <View style={docPdfStyles.tableHead}>
+            <Text style={[docPdfStyles.th, { flex: 2 }]}>Fase</Text>
+            <Text style={[docPdfStyles.th, { flex: 1 }]}>Duração</Text>
+            <Text style={[docPdfStyles.th, { flex: 1.5, textAlign: 'right' }]}>Marco</Text>
+          </View>
           {data.timeline.map((t: any, i: number) => (
-            <Text key={i} style={styles.sectionText}>
-              {t.phase} — {t.duration} {t.milestone ? `(${t.milestone})` : ''}
-            </Text>
+            <View key={i} style={docPdfStyles.tableRow} wrap={false}>
+              <Text style={[docPdfStyles.td, { flex: 2, fontWeight: 'bold' }]}>{t.phase}</Text>
+              <Text style={[docPdfStyles.td, { flex: 1 }]}>{t.duration}</Text>
+              <Text style={[docPdfStyles.td, { flex: 1.5, textAlign: 'right', color: documentColors.textMuted }]}>
+                {t.milestone || '—'}
+              </Text>
+            </View>
           ))}
-        </>
+        </View>
       )}
 
       {data?.investment && data.investment.length > 0 && (
-        <>
-          <Text style={styles.sectionTitle}>Investimento</Text>
+        <View>
+          <Text style={docPdfStyles.sectionTitle}>Investimento</Text>
+          <View style={docPdfStyles.tableHead}>
+            <Text style={[docPdfStyles.th, { flex: 3 }]}>Item</Text>
+            <Text style={[docPdfStyles.th, { flex: 2 }]}>Condição</Text>
+            <Text style={[docPdfStyles.th, { flex: 1.5, textAlign: 'right' }]}>Valor</Text>
+          </View>
           {data.investment.map((item: any, i: number) => (
-            <View key={i} style={styles.investmentRow}>
-              <Text style={styles.investmentLabel}>{item.item}</Text>
-              <Text style={styles.investmentValue}>{formatBRL(Number(item.amount || 0))}</Text>
+            <View key={i} style={docPdfStyles.tableRow} wrap={false}>
+              <Text style={[docPdfStyles.td, { flex: 3 }]}>{item.item}</Text>
+              <Text style={[docPdfStyles.td, { flex: 2, color: documentColors.textMuted }]}>{item.condition || '—'}</Text>
+              <Text style={[docPdfStyles.td, { flex: 1.5, textAlign: 'right', fontWeight: 'bold' }]}>
+                {pdfBRL(Number(item.amount || 0))}
+              </Text>
             </View>
           ))}
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>{formatBRL(totalInvestment)}</Text>
+          <View style={[docPdfStyles.totalRow, { marginTop: 8 }]}>
+            <Text style={docPdfStyles.totalLabel}>Investimento Total</Text>
+            <Text style={docPdfStyles.totalValue}>{pdfBRL(totalInvestment)}</Text>
           </View>
-        </>
+        </View>
       )}
 
       {data?.terms && (
-        <>
-          <Text style={styles.sectionTitle}>Termos e Condições</Text>
-          <Text style={styles.sectionText}>{data.terms}</Text>
-        </>
+        <View>
+          <Text style={docPdfStyles.sectionTitle}>Termos e Condições</Text>
+          <Text style={docPdfStyles.sectionText}>{data.terms}</Text>
+          <Text style={[docPdfStyles.sectionText, { fontSize: 8, color: documentColors.textFaint }]}>
+            Validade: 30 dias a partir da data de emissão
+          </Text>
+        </View>
       )}
 
-      <View style={styles.footer}>
-        <Text style={styles.footerHint}>Aceite e assinatura do cliente</Text>
-        <View style={styles.signatureLine}>
-          <Text style={styles.signatureName}>{data?.client?.name || data?.clientName || 'Nome do Cliente'}</Text>
-        </View>
-      </View>
-    </Page>
+      <DocumentPdfFooter
+        company={data?.company}
+        info={headerInfo}
+        hint="Aceite da proposta — assinatura do cliente abaixo"
+        signatureName={data?.client?.name || data?.clientName || 'Nome do Cliente'}
+      />
+    </DocumentPdfPage>
   )
 }

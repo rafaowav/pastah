@@ -14,8 +14,8 @@ export interface Template {
   documentType: string
   name: string
   config: Record<string, any>
-  isGlobal?: string
+  isGlobal?: string | null
   createdAt: Date
   updatedAt: Date
-  deletedAt?: Date
+  deletedAt?: Date | null
 }

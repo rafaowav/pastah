@@ -18,15 +18,15 @@ export interface Product {
   id: string
   userId: string
   name: string
-  description?: string
+  description?: string | null
   price: string
-  sku?: string
-  category?: string
+  sku?: string | null
+  category?: string | null
   settings?: {
     taxable?: boolean
     stock?: number
-  }
+  } | null
   createdAt: Date
   updatedAt: Date
-  deletedAt?: Date
+  deletedAt?: Date | null
 }

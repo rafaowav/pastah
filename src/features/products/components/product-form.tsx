@@ -34,6 +34,7 @@ export function ProductForm({ mode, initialData }: ProductFormProps) {
   })
 
   async function onSubmit(data: ProductInput) {
+    if (isLoading) return
     setIsLoading(true)
 
     try {
@@ -46,18 +47,21 @@ export function ProductForm({ mode, initialData }: ProductFormProps) {
         router.push('/products')
         router.refresh()
       } else {
-        if (result.errors) {
-          Object.entries(result.errors).forEach(([field, messages]) => {
-            messages.forEach((message) => {
+        if (result.fieldErrors) {
+          for (const [field, messages] of Object.entries(result.fieldErrors)) {
+            for (const message of messages) {
               toast.error(`${field}: ${message}`)
-            })
-          })
+            }
+          }
         } else {
-          toast.error(result.error as string)
+          toast.error(result.error)
         }
       }
     } catch (error) {
-      toast.error('Erro ao salvar item.')
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[product-form] erro inesperado:', error)
+      }
+      toast.error('Não foi possível salvar o item. Tente novamente.')
     } finally {
       setIsLoading(false)
     }
@@ -89,7 +93,7 @@ export function ProductForm({ mode, initialData }: ProductFormProps) {
               {...form.register('name')}
             />
             {form.formState.errors.name && (
-              <p className="text-xs text-red-600 font-medium">
+              <p className="text-xs font-medium text-destructive">
                 {form.formState.errors.name.message}
               </p>
             )}

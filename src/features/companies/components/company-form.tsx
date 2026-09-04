@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { companySchema, CompanyInput } from '../types'
+import { companySchema, CompanyInput, CompanyParsed } from '../types'
 import { createCompanyAction, updateCompanyAction } from '../actions'
-import { Building2, CheckCircle2, Globe, Mail, Phone, MapPin } from 'lucide-react'
+import { Building2, CheckCircle2, Mail, Phone, MapPin, Loader2 } from 'lucide-react'
 
 interface CompanyFormProps {
   mode: 'create' | 'edit'
@@ -19,9 +19,9 @@ interface CompanyFormProps {
 
 export function CompanyForm({ mode, initialData }: CompanyFormProps) {
   const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
-  const form = useForm<CompanyInput>({
+  const form = useForm<CompanyInput, unknown, CompanyParsed>({
     resolver: zodResolver(companySchema),
     defaultValues: initialData || {
       name: '',
@@ -43,38 +43,46 @@ export function CompanyForm({ mode, initialData }: CompanyFormProps) {
     },
   })
 
-  async function onSubmit(data: CompanyInput) {
-    setIsLoading(true)
+  async function onSubmit(data: CompanyParsed) {
+    if (isSaving) return
+    setIsSaving(true)
 
     try {
-      const result = mode === 'create'
-        ? await createCompanyAction(data)
-        : await updateCompanyAction(initialData!.id!, data)
+      const result =
+        mode === 'create'
+          ? await createCompanyAction(data)
+          : await updateCompanyAction(initialData!.id!, data)
 
       if (result.success) {
         toast.success(mode === 'create' ? 'Empresa cadastrada com sucesso!' : 'Empresa atualizada!')
         router.push('/companies')
         router.refresh()
       } else {
-        if (result.errors) {
-          Object.entries(result.errors).forEach(([field, messages]) => {
-            messages.forEach((message) => {
+        if (result.fieldErrors) {
+          for (const [field, messages] of Object.entries(result.fieldErrors)) {
+            for (const message of messages) {
               toast.error(`${field}: ${message}`)
-            })
-          })
+            }
+          }
         } else {
           toast.error(result.error)
         }
       }
     } catch (error) {
-      toast.error('Erro ao salvar empresa.')
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[company-form] erro inesperado:', error)
+      }
+      toast.error('Não foi possível salvar a empresa. Tente novamente.')
     } finally {
-      setIsLoading(false)
+      setIsSaving(false)
     }
   }
 
+  const inputClass = 'h-11 rounded-xl bg-muted border-border text-sm focus:bg-transparent'
+  const errorClass = 'text-xs font-medium text-destructive mt-1'
+
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-6">
       {/* Basic Information Card */}
       <div className="bg-card rounded-3xl p-6 sm:p-8 main-container-shadow border border-border/80 space-y-6">
         <div className="flex items-center gap-3 border-b border-muted pb-4">
@@ -95,14 +103,13 @@ export function CompanyForm({ mode, initialData }: CompanyFormProps) {
             <Input
               id="name"
               placeholder="Ex: Pastah Soluções Criativas Ltda"
-              disabled={isLoading}
-              className="h-11 rounded-xl bg-muted border-border text-sm focus:bg-transparent"
+              disabled={isSaving}
+              aria-invalid={!!form.formState.errors.name}
+              className={inputClass}
               {...form.register('name')}
             />
             {form.formState.errors.name && (
-              <p className="text-xs text-red-600 font-medium">
-                {form.formState.errors.name.message}
-              </p>
+              <p className={errorClass}>{form.formState.errors.name.message}</p>
             )}
           </div>
 
@@ -114,8 +121,8 @@ export function CompanyForm({ mode, initialData }: CompanyFormProps) {
               <Input
                 id="document"
                 placeholder="00.000.000/0001-00"
-                disabled={isLoading}
-                className="h-11 rounded-xl bg-muted border-border text-sm focus:bg-transparent"
+                disabled={isSaving}
+                className={inputClass}
                 {...form.register('document')}
               />
             </div>
@@ -127,8 +134,8 @@ export function CompanyForm({ mode, initialData }: CompanyFormProps) {
               <Input
                 id="website"
                 placeholder="https://suaempresa.com"
-                disabled={isLoading}
-                className="h-11 rounded-xl bg-muted border-border text-sm focus:bg-transparent"
+                disabled={isSaving}
+                className={inputClass}
                 {...form.register('website')}
               />
             </div>
@@ -136,28 +143,32 @@ export function CompanyForm({ mode, initialData }: CompanyFormProps) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-xs font-semibold text-foreground">
-                E-mail Comercial
+              <Label htmlFor="email" className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-muted-foreground" /> E-mail Comercial
               </Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="contato@empresa.com"
-                disabled={isLoading}
-                className="h-11 rounded-xl bg-muted border-border text-sm focus:bg-transparent"
+                disabled={isSaving}
+                aria-invalid={!!form.formState.errors.email}
+                className={inputClass}
                 {...form.register('email')}
               />
+              {form.formState.errors.email && (
+                <p className={errorClass}>{form.formState.errors.email.message}</p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone" className="text-xs font-semibold text-foreground">
-                Telefone Comercial
+              <Label htmlFor="phone" className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-muted-foreground" /> Telefone Comercial
               </Label>
               <Input
                 id="phone"
                 placeholder="(11) 3333-0000"
-                disabled={isLoading}
-                className="h-11 rounded-xl bg-muted border-border text-sm focus:bg-transparent"
+                disabled={isSaving}
+                className={inputClass}
                 {...form.register('phone')}
               />
             </div>
@@ -182,8 +193,8 @@ export function CompanyForm({ mode, initialData }: CompanyFormProps) {
             <Label className="text-xs font-semibold text-foreground">Logradouro</Label>
             <Input
               placeholder="Avenida Paulista"
-              disabled={isLoading}
-              className="h-11 rounded-xl bg-muted border-border text-sm focus:bg-transparent"
+              disabled={isSaving}
+              className={inputClass}
               {...form.register('address.street')}
             />
           </div>
@@ -191,8 +202,8 @@ export function CompanyForm({ mode, initialData }: CompanyFormProps) {
             <Label className="text-xs font-semibold text-foreground">Número</Label>
             <Input
               placeholder="1000"
-              disabled={isLoading}
-              className="h-11 rounded-xl bg-muted border-border text-sm focus:bg-transparent"
+              disabled={isSaving}
+              className={inputClass}
               {...form.register('address.number')}
             />
           </div>
@@ -201,8 +212,8 @@ export function CompanyForm({ mode, initialData }: CompanyFormProps) {
             <Label className="text-xs font-semibold text-foreground">Bairro</Label>
             <Input
               placeholder="Bela Vista"
-              disabled={isLoading}
-              className="h-11 rounded-xl bg-muted border-border text-sm focus:bg-transparent"
+              disabled={isSaving}
+              className={inputClass}
               {...form.register('address.neighborhood')}
             />
           </div>
@@ -210,8 +221,8 @@ export function CompanyForm({ mode, initialData }: CompanyFormProps) {
             <Label className="text-xs font-semibold text-foreground">Cidade</Label>
             <Input
               placeholder="São Paulo"
-              disabled={isLoading}
-              className="h-11 rounded-xl bg-muted border-border text-sm focus:bg-transparent"
+              disabled={isSaving}
+              className={inputClass}
               {...form.register('address.city')}
             />
           </div>
@@ -219,8 +230,8 @@ export function CompanyForm({ mode, initialData }: CompanyFormProps) {
             <Label className="text-xs font-semibold text-foreground">Estado (UF)</Label>
             <Input
               placeholder="SP"
-              disabled={isLoading}
-              className="h-11 rounded-xl bg-muted border-border text-sm focus:bg-transparent"
+              disabled={isSaving}
+              className={inputClass}
               {...form.register('address.state')}
             />
           </div>
@@ -233,17 +244,20 @@ export function CompanyForm({ mode, initialData }: CompanyFormProps) {
           type="button"
           variant="outline"
           onClick={() => router.push('/companies')}
+          disabled={isSaving}
           className="rounded-xl h-11 px-6 font-medium text-xs border-border hover:bg-accent"
         >
           Cancelar
         </Button>
         <Button
           type="submit"
-          disabled={isLoading}
+          disabled={isSaving}
+          aria-busy={isSaving}
           className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-11 px-8 font-semibold text-xs shadow-md gap-2"
         >
-          {isLoading ? 'Salvando...' : mode === 'create' ? 'Cadastrar Empresa' : 'Salvar Alterações'}
-          <CheckCircle2 className="w-4 h-4" />
+          {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+          {isSaving ? 'Salvando...' : mode === 'create' ? 'Cadastrar Empresa' : 'Salvar Alterações'}
+          {!isSaving && <CheckCircle2 className="w-4 h-4" />}
         </Button>
       </div>
     </form>

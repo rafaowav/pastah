@@ -2,33 +2,51 @@
 
 import { db } from '@/lib/db'
 import { companies } from '@/lib/db/schema'
-import { companySchema, CompanyInput } from './types'
+import { companySchema } from './types'
 import { requireAuth } from '@/lib/auth/helpers'
 import { eq, and, isNull } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { createNotification } from '@/features/notifications/actions'
+import { ActionState, zodFieldErrors } from '@/lib/action-result'
+import { devLog, devError, friendlyDbError } from '@/lib/dev-log'
+import type { Company } from './types'
 
-export type ActionState<T> = 
-  | { success: true; data: T }
-  | { success: false; error: string; errors?: Record<string, string[]> }
+function revalidateCompanyPaths(id?: string) {
+  revalidatePath('/companies')
+  revalidatePath('/dashboard')
+  if (id) revalidatePath(`/companies/${id}`)
+}
 
-export async function createCompanyAction(input: unknown): Promise<ActionState<any>> {
+export async function createCompanyAction(input: unknown): Promise<ActionState<Company>> {
   try {
     const user = await requireAuth()
+    devLog('companies.create', 'payload recebido', {
+      name: typeof (input as { name?: unknown })?.name === 'string' ? (input as { name: string }).name : undefined,
+    })
+
     const parsed = companySchema.safeParse(input)
-    
     if (!parsed.success) {
-      return { 
-        success: false, 
-        error: 'Validation failed',
-        errors: parsed.error.flatten().fieldErrors 
+      devLog('companies.create', 'validação Zod falhou', parsed.error.issues)
+      return {
+        success: false,
+        error: 'Verifique os campos destacados.',
+        fieldErrors: zodFieldErrors(parsed.error),
       }
     }
 
-    const [company] = await db.insert(companies).values({
-      userId: user.id,
-      ...parsed.data,
-    }).returning()
+    const [company] = await db
+      .insert(companies)
+      .values({
+        userId: user.id,
+        name: parsed.data.name,
+        document: parsed.data.document || null,
+        email: parsed.data.email || null,
+        phone: parsed.data.phone || null,
+        website: parsed.data.website || null,
+        address: parsed.data.address ?? null,
+        settings: parsed.data.settings ?? null,
+      })
+      .returning()
 
     await createNotification(
       user.id,
@@ -39,118 +57,99 @@ export async function createCompanyAction(input: unknown): Promise<ActionState<a
       '/companies',
     )
 
-    revalidatePath('/companies')
+    revalidateCompanyPaths(company.id)
     return { success: true, data: company }
   } catch (error) {
-    console.error('Create company error:', error)
-    return { 
-      success: false, 
-      error: 'Ocorreu um erro' 
-    }
+    devError('companies.create', error)
+    return { success: false, error: friendlyDbError(error) }
   }
 }
 
-export async function getCompaniesAction(): Promise<ActionState<any[]>> {
+export async function getCompaniesAction(): Promise<ActionState<Company[]>> {
   try {
     const user = await requireAuth()
 
     const userCompanies = await db.query.companies.findMany({
-      where: and(
-        eq(companies.userId, user.id),
-        isNull(companies.deletedAt)
-      ),
+      where: and(eq(companies.userId, user.id), isNull(companies.deletedAt)),
       orderBy: (companies, { desc }) => [desc(companies.createdAt)],
     })
 
     return { success: true, data: userCompanies }
   } catch (error) {
-    console.error('Get companies error:', error)
-    return { 
-      success: false, 
-      error: 'Something went wrong' 
-    }
+    devError('companies.list', error)
+    return { success: false, error: friendlyDbError(error) }
   }
 }
 
-export async function getCompanyByIdAction(id: string): Promise<ActionState<any>> {
+export async function getCompanyByIdAction(id: string): Promise<ActionState<Company>> {
   try {
     const user = await requireAuth()
 
     const company = await db.query.companies.findFirst({
-      where: and(
-        eq(companies.id, id),
-        eq(companies.userId, user.id),
-        isNull(companies.deletedAt)
-      ),
+      where: and(eq(companies.id, id), eq(companies.userId, user.id), isNull(companies.deletedAt)),
     })
 
     if (!company) {
-      return { 
-        success: false, 
-        error: 'Company not found' 
-      }
+      return { success: false, error: 'Empresa não encontrada.' }
     }
 
     return { success: true, data: company }
   } catch (error) {
-    console.error('Get company error:', error)
-    return { 
-      success: false, 
-      error: 'Something went wrong' 
-    }
+    devError('companies.get', error)
+    return { success: false, error: friendlyDbError(error) }
   }
 }
 
-export async function updateCompanyAction(id: string, input: unknown): Promise<ActionState<any>> {
+export async function updateCompanyAction(id: string, input: unknown): Promise<ActionState<Company>> {
   try {
     const user = await requireAuth()
+    devLog('companies.update', 'payload recebido', {
+      id,
+      name: typeof (input as { name?: unknown })?.name === 'string' ? (input as { name: string }).name : undefined,
+    })
+
+    if (!id || !/^[0-9a-fA-F-]{36}$/.test(id)) {
+      return { success: false, error: 'Identificador de empresa inválido.' }
+    }
 
     const parsed = companySchema.safeParse(input)
-    
     if (!parsed.success) {
-      return { 
-        success: false, 
-        error: 'Validation failed',
-        errors: parsed.error.flatten().fieldErrors 
+      return {
+        success: false,
+        error: 'Verifique os campos destacados.',
+        fieldErrors: zodFieldErrors(parsed.error),
       }
     }
 
+    // Ownership: a empresa precisa pertencer ao usuário autenticado
     const existing = await db.query.companies.findFirst({
-      where: and(
-        eq(companies.id, id),
-        eq(companies.userId, user.id),
-        isNull(companies.deletedAt)
-      ),
+      where: and(eq(companies.id, id), eq(companies.userId, user.id), isNull(companies.deletedAt)),
     })
 
     if (!existing) {
-      return { 
-        success: false, 
-        error: 'Company not found' 
-      }
+      return { success: false, error: 'Empresa não encontrada.' }
     }
 
-    const [updated] = await db.update(companies)
+    const [updated] = await db
+      .update(companies)
       .set({
-        ...parsed.data,
+        name: parsed.data.name,
+        document: parsed.data.document || null,
+        email: parsed.data.email || null,
+        phone: parsed.data.phone || null,
+        website: parsed.data.website || null,
+        address: parsed.data.address ?? null,
+        settings: parsed.data.settings ?? null,
         updatedAt: new Date(),
       })
-      .where(and(
-        eq(companies.id, id),
-        eq(companies.userId, user.id)
-      ))
+      .where(and(eq(companies.id, id), eq(companies.userId, user.id)))
       .returning()
 
-    revalidatePath('/companies')
-    revalidatePath(`/companies/${id}`)
-
+    revalidateCompanyPaths(id)
     return { success: true, data: updated }
   } catch (error) {
-    console.error('Update company error:', error)
-    return { 
-      success: false, 
-      error: 'Something went wrong' 
-    }
+    devError('companies.update', error)
+    return { success: false, error: friendlyDbError(error) }
   }
 }
 
@@ -159,38 +158,22 @@ export async function deleteCompanyAction(id: string): Promise<ActionState<void>
     const user = await requireAuth()
 
     const existing = await db.query.companies.findFirst({
-      where: and(
-        eq(companies.id, id),
-        eq(companies.userId, user.id),
-        isNull(companies.deletedAt)
-      ),
+      where: and(eq(companies.id, id), eq(companies.userId, user.id), isNull(companies.deletedAt)),
     })
 
     if (!existing) {
-      return { 
-        success: false, 
-        error: 'Company not found' 
-      }
+      return { success: false, error: 'Empresa não encontrada.' }
     }
 
-    await db.update(companies)
-      .set({
-        deletedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(and(
-        eq(companies.id, id),
-        eq(companies.userId, user.id)
-      ))
+    await db
+      .update(companies)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(companies.id, id), eq(companies.userId, user.id)))
 
-    revalidatePath('/companies')
-
+    revalidateCompanyPaths()
     return { success: true, data: undefined }
   } catch (error) {
-    console.error('Delete company error:', error)
-    return { 
-      success: false, 
-      error: 'Something went wrong' 
-    }
+    devError('companies.delete', error)
+    return { success: false, error: friendlyDbError(error) }
   }
 }

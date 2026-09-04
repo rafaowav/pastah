@@ -4,33 +4,42 @@ export interface DashboardCompany {
   document: string | null
 }
 
-export interface DashboardClientInfo {
-  id: string
-  name: string
-}
-
 export interface DashboardDocument {
   id: string
   type: string
   title: string
   status: string
+  paymentStatus: string
   clientId: string | null
   clientName: string | null
   createdAt: Date
-  data: Record<string, any>
+  totalAmountCents: number
+  receivedAmountCents: number
+  data: Record<string, unknown>
 }
 
 export interface DashboardMetrics {
-  estimatedRevenue: number
-  realizedRevenue: number
+  /** Soma de totalAmount de orçamentos/propostas não arquivados e não recusados (centavos) */
+  estimatedRevenueCents: number
+  /** Soma de receivedAmount de documentos recebidos/parcialmente recebidos (centavos) */
+  receivedRevenueCents: number
+  /** Soma pendente de orçamentos/propostas com pagamento pendente (centavos) */
+  pendingAmountCents: number
+  /** Saldo restante de documentos parcialmente recebidos (centavos) */
+  partiallyReceivedAmountCents: number
+  /** received / estimated em % (0-100) */
+  receivableRate: number
+  finalizedCount: number
   totalDocuments: number
   activeClients: number
   byStatus: Record<string, number>
+  byPaymentStatus: Record<string, number>
   byType: Record<string, number>
   monthlyRevenue: {
     month: string
-    orcado: number
-    realizado: number
+    orcadoCents: number
+    recebidoCents: number
+    pendenteCents: number
   }[]
 }
 

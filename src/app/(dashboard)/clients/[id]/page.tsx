@@ -19,11 +19,21 @@ export default async function EditClientPage({
   
   const client = result.data
   const formData = {
-    ...client,
-    email: client.email ?? undefined,
-    document: client.document ?? undefined,
-    phone: client.phone ?? undefined,
-    address: client.address ?? undefined,
+    id: client.id,
+    name: client.name,
+    email: client.email ?? '',
+    document: client.document ?? '',
+    phone: client.phone ?? '',
+    address: {
+      street: client.address?.street ?? '',
+      number: client.address?.number ?? '',
+      complement: client.address?.complement ?? '',
+      neighborhood: client.address?.neighborhood ?? '',
+      city: client.address?.city ?? '',
+      state: client.address?.state ?? '',
+      zipCode: client.address?.zipCode ?? '',
+      country: client.address?.country ?? 'Brasil',
+    },
   }
 
   return (

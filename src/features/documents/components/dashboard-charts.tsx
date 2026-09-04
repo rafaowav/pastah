@@ -1,24 +1,12 @@
 'use client'
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
-
-const statusLabels: Record<string, string> = {
-  draft: 'Rascunho',
-  sent: 'Enviado',
-  accepted: 'Aceito',
-  rejected: 'Rejeitado',
-  archived: 'Arquivado',
-  final: 'Finalizado',
-}
-
-const statusColors: Record<string, string> = {
-  draft: '#94a3b8',
-  sent: '#3b82f6',
-  accepted: '#10b981',
-  rejected: '#ef4444',
-  archived: '#6b7280',
-  final: '#8b5cf6',
-}
+import {
+  operationalStatusLabel,
+  operationalStatusBadgeClass,
+  paymentStatusLabel,
+  paymentStatusBadgeClass,
+} from '@/lib/document-status'
 
 const typeLabels: Record<string, string> = {
   orcamento: 'Orçamentos',
@@ -30,55 +18,65 @@ const typeLabels: Record<string, string> = {
 
 const typeColors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444']
 
+function useChartTheme() {
+  const isDark =
+    typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+  return {
+    tickFill: isDark ? '#94a3b8' : '#64748b',
+    tooltipStyle: {
+      borderRadius: 12,
+      border: isDark ? '1px solid rgba(255,255,255,0.16)' : '1px solid #e2e8f0',
+      backgroundColor: isDark ? '#1a2033' : '#ffffff',
+      color: isDark ? '#f4f6fb' : '#0f172a',
+      fontSize: 12,
+    } as React.CSSProperties,
+  }
+}
+
 interface MonthlyRevenueChartProps {
-  data: { month: string; receita?: number; realizado: number; orcado?: number }[]
+  data: { month: string; orcadoCents: number; recebidoCents: number; pendenteCents: number }[]
 }
 
 export function MonthlyRevenueChart({ data }: MonthlyRevenueChartProps) {
+  const theme = useChartTheme()
+  const chartData = data.map((d) => ({
+    ...d,
+    orcado: d.orcadoCents / 100,
+    recebido: d.recebidoCents / 100,
+    pendente: d.pendenteCents / 100,
+  }))
+
   return (
     <div className="h-72">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} barGap={4}>
+        <BarChart data={chartData} barGap={4}>
           <XAxis
             dataKey="month"
-            tick={{ fontSize: 11, fill: '#64748b' }}
+            tick={{ fontSize: 11, fill: theme.tickFill }}
             axisLine={false}
             tickLine={false}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: '#64748b' }}
+            tick={{ fontSize: 11, fill: theme.tickFill }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={(v: number) =>
-              v >= 1000 ? `R$${(v / 1000).toFixed(0)}k` : `R$${v}`
-            }
+            tickFormatter={(v: number) => (v >= 1000 ? `R$${(v / 1000).toFixed(0)}k` : `R$${v}`)}
           />
           <Tooltip
-            contentStyle={{
-              borderRadius: 12,
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-              fontSize: 12,
-            }}
+            contentStyle={theme.tooltipStyle}
+            cursor={{ fill: 'rgba(148,163,184,0.08)' }}
             formatter={(value: any, name: any) => [
               `R$ ${(Number(value) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-              name === 'orcado' || name === 'receita' ? 'Faturamento Estimado' : 'Faturamento Realizado',
+              name === 'orcado'
+                ? 'Estimado'
+                : name === 'recebido'
+                  ? 'Recebido'
+                  : 'Pendente',
             ]}
           />
-          <Bar
-            dataKey="orcado"
-            name="orcado"
-            fill="#3b82f6"
-            radius={[4, 4, 0, 0]}
-            maxBarSize={32}
-          />
-          <Bar
-            dataKey="realizado"
-            name="realizado"
-            fill="#10b981"
-            radius={[4, 4, 0, 0]}
-            maxBarSize={32}
-          />
+          <Bar dataKey="orcado" name="orcado" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={28} />
+          <Bar dataKey="recebido" name="recebido" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={28} />
+          <Bar dataKey="pendente" name="pendente" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={28} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -90,12 +88,13 @@ interface TypeDistributionChartProps {
 }
 
 export function TypeDistributionChart({ data }: TypeDistributionChartProps) {
+  const theme = useChartTheme()
   const total = data.reduce((acc, d) => acc + d.count, 0)
 
   return (
     <div className="h-64">
       {total === 0 ? (
-        <div className="flex items-center justify-center h-full text-sm text-slate-400">
+        <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
           Nenhum documento criado ainda
         </div>
       ) : (
@@ -112,26 +111,16 @@ export function TypeDistributionChart({ data }: TypeDistributionChartProps) {
               nameKey="type"
             >
               {data.map((entry, index) => (
-                <Cell
-                  key={entry.type}
-                  fill={typeColors[index % typeColors.length]}
-                />
+                <Cell key={entry.type} fill={typeColors[index % typeColors.length]} />
               ))}
             </Pie>
             <Tooltip
-              contentStyle={{
-                borderRadius: 12,
-                border: '1px solid #e2e8f0',
-                fontSize: 12,
-              }}
-              formatter={(value: any, name: any) => [
-                `${value} docs`,
-                typeLabels[name] || name,
-              ]}
+              contentStyle={theme.tooltipStyle}
+              formatter={(value: any, name: any) => [`${value} docs`, typeLabels[name] || name]}
             />
             <Legend
               formatter={(value) => typeLabels[value] || value}
-              wrapperStyle={{ fontSize: 11 }}
+              wrapperStyle={{ fontSize: 11, color: theme.tickFill }}
             />
           </PieChart>
         </ResponsiveContainer>
@@ -145,17 +134,25 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const color = statusColors[status] || '#94a3b8'
   return (
     <span
-      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold"
-      style={{
-        backgroundColor: `${color}15`,
-        color,
-      }}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${operationalStatusBadgeClass(status)}`}
     >
-      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
-      {statusLabels[status] || status}
+      {operationalStatusLabel(status)}
+    </span>
+  )
+}
+
+interface PaymentStatusBadgeProps {
+  status: string
+}
+
+export function PaymentStatusBadge({ status }: PaymentStatusBadgeProps) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${paymentStatusBadgeClass(status)}`}
+    >
+      {paymentStatusLabel(status)}
     </span>
   )
 }

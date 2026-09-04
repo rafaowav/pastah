@@ -167,7 +167,7 @@ export function Header({ user, companies = [], activeCompany }: HeaderProps) {
             render={
               <Button
                 size="sm"
-                className="hidden sm:inline-flex bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-3 h-9 font-medium text-xs shadow-sm gap-1.5"
+                className="hidden sm:inline-flex bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl px-3 h-9 font-medium text-xs shadow-sm gap-1.5"
               />
             }
           >
@@ -211,7 +211,7 @@ export function Header({ user, companies = [], activeCompany }: HeaderProps) {
         {/* Mobile: direct link */}
         <Link
           href="/documents/new"
-          className="sm:hidden bg-slate-900 hover:bg-slate-800 text-white rounded-xl px-3 h-9 inline-flex items-center justify-center font-medium text-xs shadow-sm gap-1.5"
+          className="sm:hidden bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl px-3 h-9 inline-flex items-center justify-center font-medium text-xs shadow-sm gap-1.5"
         >
           <Plus className="w-4 h-4" />
         </Link>
@@ -298,7 +298,7 @@ export function Header({ user, companies = [], activeCompany }: HeaderProps) {
               className="rounded-xl cursor-pointer"
             >
               <div className="flex items-center gap-2 w-full px-1 py-0.5 text-xs font-medium">
-                <Monitor className="w-4 h-4 text-slate-500" />
+                <Monitor className="w-4 h-4 text-muted-foreground" />
                 Usar tema do sistema
                 {theme === 'system' && <Check className="w-3.5 h-3.5 ml-auto text-blue-600" />}
               </div>

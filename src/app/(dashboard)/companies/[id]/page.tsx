@@ -19,11 +19,23 @@ export default async function EditCompanyPage({
   
   const company = result.data
   const formData = {
-    ...company,
-    email: company.email ?? undefined,
-    document: company.document ?? undefined,
-    phone: company.phone ?? undefined,
-    address: company.address ?? undefined,
+    id: company.id,
+    name: company.name,
+    email: company.email ?? '',
+    document: company.document ?? '',
+    phone: company.phone ?? '',
+    website: company.website ?? '',
+    address: {
+      street: company.address?.street ?? '',
+      number: company.address?.number ?? '',
+      complement: company.address?.complement ?? '',
+      neighborhood: company.address?.neighborhood ?? '',
+      city: company.address?.city ?? '',
+      state: company.address?.state ?? '',
+      zipCode: company.address?.zipCode ?? '',
+      country: company.address?.country ?? 'Brasil',
+    },
+    settings: company.settings ?? {},
   }
 
   return (

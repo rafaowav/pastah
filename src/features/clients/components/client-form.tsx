@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { clientSchema, ClientInput } from '../types'
+import { clientSchema, ClientInput, ClientParsed } from '../types'
 import { createClientAction, updateClientAction } from '../actions'
 import { Users, CheckCircle2, MapPin, Mail, Phone } from 'lucide-react'
 
@@ -21,7 +21,7 @@ export function ClientForm({ mode, initialData }: ClientFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
-  const form = useForm<ClientInput>({
+  const form = useForm<ClientInput, unknown, ClientParsed>({
     resolver: zodResolver(clientSchema),
     defaultValues: initialData || {
       name: '',
@@ -41,7 +41,8 @@ export function ClientForm({ mode, initialData }: ClientFormProps) {
     },
   })
 
-  async function onSubmit(data: ClientInput) {
+  async function onSubmit(data: ClientParsed) {
+    if (isLoading) return
     setIsLoading(true)
 
     try {
@@ -54,18 +55,21 @@ export function ClientForm({ mode, initialData }: ClientFormProps) {
         router.push('/clients')
         router.refresh()
       } else {
-        if (result.errors) {
-          Object.entries(result.errors).forEach(([field, messages]) => {
-            messages.forEach((message) => {
+        if (result.fieldErrors) {
+          for (const [field, messages] of Object.entries(result.fieldErrors)) {
+            for (const message of messages) {
               toast.error(`${field}: ${message}`)
-            })
-          })
+            }
+          }
         } else {
-          toast.error(result.error as string)
+          toast.error(result.error)
         }
       }
     } catch (error) {
-      toast.error('Erro ao salvar cliente.')
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[client-form] erro inesperado:', error)
+      }
+      toast.error('Não foi possível salvar o cliente. Tente novamente.')
     } finally {
       setIsLoading(false)
     }
@@ -98,7 +102,7 @@ export function ClientForm({ mode, initialData }: ClientFormProps) {
               {...form.register('name')}
             />
             {form.formState.errors.name && (
-              <p className="text-xs text-red-600 font-medium">
+              <p className="text-xs font-medium text-destructive">
                 {form.formState.errors.name.message}
               </p>
             )}
@@ -223,6 +227,7 @@ export function ClientForm({ mode, initialData }: ClientFormProps) {
         <Button
           type="submit"
           disabled={isLoading}
+          aria-busy={isLoading}
           className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-11 px-8 font-semibold text-xs shadow-md gap-2"
         >
           {isLoading ? 'Salvando...' : mode === 'create' ? 'Cadastrar Cliente' : 'Salvar Alterações'}

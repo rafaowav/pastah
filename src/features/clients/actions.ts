@@ -1,30 +1,47 @@
-'use server'
+﻿'use server'
 
 import { db } from '@/lib/db'
 import { clients } from '@/lib/db/schema'
-import { clientSchema, ClientInput } from './types'
+import { clientSchema } from './types'
 import { requireAuth } from '@/lib/auth/helpers'
 import { eq, and, isNull } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { createNotification } from '@/features/notifications/actions'
+import { ActionState, zodFieldErrors } from '@/lib/action-result'
+import { devLog, devError, friendlyDbError, extractName } from '@/lib/dev-log'
+import type { Client } from './types'
 
-export type ActionState<T> = 
-  | { success: true; data: T }
-  | { success: false; error: string; errors?: Record<string, string[]> }
+function revalidateClientPaths(id?: string) {
+  revalidatePath('/clients')
+  revalidatePath('/dashboard')
+  if (id) revalidatePath(`/clients/${id}`)
+}
 
-export async function createClientAction(input: unknown): Promise<ActionState<any>> {
+export async function createClientAction(input: unknown): Promise<ActionState<Client>> {
   try {
     const user = await requireAuth()
+    devLog('clients.create', 'payload recebido', { name: extractName(input) })
+
     const parsed = clientSchema.safeParse(input)
-    
     if (!parsed.success) {
-      return { success: false, error: 'Validation failed', errors: parsed.error.flatten().fieldErrors }
+      return {
+        success: false,
+        error: 'Verifique os campos destacados.',
+        fieldErrors: zodFieldErrors(parsed.error),
+      }
     }
 
-    const [client] = await db.insert(clients).values({
-      userId: user.id,
-      ...parsed.data,
-    }).returning()
+    const [client] = await db
+      .insert(clients)
+      .values({
+        userId: user.id,
+        name: parsed.data.name,
+        email: parsed.data.email || null,
+        document: parsed.data.document || null,
+        phone: parsed.data.phone || null,
+        address: parsed.data.address ?? null,
+      })
+      .returning()
 
     await createNotification(
       user.id,
@@ -35,68 +52,83 @@ export async function createClientAction(input: unknown): Promise<ActionState<an
       '/clients',
     )
 
-    revalidatePath('/clients')
+    revalidateClientPaths(client.id)
     return { success: true, data: client }
   } catch (error) {
-    console.error('Create client error:', error)
-    return { success: false, error: 'Ocorreu um erro' }
+    devError('clients.create', error)
+    return { success: false, error: friendlyDbError(error) }
   }
 }
 
-export async function getClientsAction(): Promise<ActionState<any[]>> {
+export async function getClientsAction(): Promise<ActionState<Client[]>> {
   try {
     const user = await requireAuth()
-    const userClients = await db.query.clients.findMany({
+    const rows = await db.query.clients.findMany({
       where: and(eq(clients.userId, user.id), isNull(clients.deletedAt)),
       orderBy: (clients, { desc }) => [desc(clients.createdAt)],
     })
-    return { success: true, data: userClients }
+    return { success: true, data: rows }
   } catch (error) {
-    console.error('Get clients error:', error)
-    return { success: false, error: 'Something went wrong' }
+    devError('clients.list', error)
+    return { success: false, error: friendlyDbError(error) }
   }
 }
 
-export async function getClientByIdAction(id: string): Promise<ActionState<any>> {
+export async function getClientByIdAction(id: string): Promise<ActionState<Client>> {
   try {
     const user = await requireAuth()
     const client = await db.query.clients.findFirst({
       where: and(eq(clients.id, id), eq(clients.userId, user.id), isNull(clients.deletedAt)),
     })
-    if (!client) return { success: false, error: 'Client not found' }
+    if (!client) return { success: false, error: 'Cliente não encontrado.' }
     return { success: true, data: client }
   } catch (error) {
-    console.error('Get client error:', error)
-    return { success: false, error: 'Something went wrong' }
+    devError('clients.get', error)
+    return { success: false, error: friendlyDbError(error) }
   }
 }
 
-export async function updateClientAction(id: string, input: unknown): Promise<ActionState<any>> {
+export async function updateClientAction(id: string, input: unknown): Promise<ActionState<Client>> {
   try {
     const user = await requireAuth()
+    devLog('clients.update', 'payload recebido', { id, name: extractName(input) })
+
+    if (!id || !/^[0-9a-fA-F-]{36}$/.test(id)) {
+      return { success: false, error: 'Identificador de cliente inválido.' }
+    }
+
     const parsed = clientSchema.safeParse(input)
-    
     if (!parsed.success) {
-      return { success: false, error: 'Validation failed', errors: parsed.error.flatten().fieldErrors }
+      return {
+        success: false,
+        error: 'Verifique os campos destacados.',
+        fieldErrors: zodFieldErrors(parsed.error),
+      }
     }
 
     const existing = await db.query.clients.findFirst({
       where: and(eq(clients.id, id), eq(clients.userId, user.id), isNull(clients.deletedAt)),
     })
+    if (!existing) return { success: false, error: 'Cliente não encontrado.' }
 
-    if (!existing) return { success: false, error: 'Client not found' }
-
-    const [updated] = await db.update(clients)
-      .set({ ...parsed.data, updatedAt: new Date() })
+    const [updated] = await db
+      .update(clients)
+      .set({
+        name: parsed.data.name,
+        email: parsed.data.email || null,
+        document: parsed.data.document || null,
+        phone: parsed.data.phone || null,
+        address: parsed.data.address ?? null,
+        updatedAt: new Date(),
+      })
       .where(and(eq(clients.id, id), eq(clients.userId, user.id)))
       .returning()
 
-    revalidatePath('/clients')
-    revalidatePath(`/clients/${id}`)
+    revalidateClientPaths(id)
     return { success: true, data: updated }
   } catch (error) {
-    console.error('Update client error:', error)
-    return { success: false, error: 'Something went wrong' }
+    devError('clients.update', error)
+    return { success: false, error: friendlyDbError(error) }
   }
 }
 
@@ -106,17 +138,17 @@ export async function deleteClientAction(id: string): Promise<ActionState<void>>
     const existing = await db.query.clients.findFirst({
       where: and(eq(clients.id, id), eq(clients.userId, user.id), isNull(clients.deletedAt)),
     })
+    if (!existing) return { success: false, error: 'Cliente não encontrado.' }
 
-    if (!existing) return { success: false, error: 'Client not found' }
-
-    await db.update(clients)
+    await db
+      .update(clients)
       .set({ deletedAt: new Date(), updatedAt: new Date() })
       .where(and(eq(clients.id, id), eq(clients.userId, user.id)))
 
-    revalidatePath('/clients')
+    revalidateClientPaths()
     return { success: true, data: undefined }
   } catch (error) {
-    console.error('Delete client error:', error)
-    return { success: false, error: 'Something went wrong' }
+    devError('clients.delete', error)
+    return { success: false, error: friendlyDbError(error) }
   }
 }
